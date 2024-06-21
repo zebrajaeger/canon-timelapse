@@ -39,12 +39,23 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/org.blackdread/canon-sdk-java -->
+		<!-- https://mvnrepository.com/artifact/org.blackdread/camera-binding -->
 		<dependency>
 			<groupId>org.blackdread</groupId>
-			<artifactId>canon-sdk-java</artifactId>
+			<artifactId>camera-binding</artifactId>
 			<version>1.2.0</version>
-			<type>pom</type>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.blackdread/camera-framework -->
+		<dependency>
+			<groupId>org.blackdread</groupId>
+			<artifactId>camera-framework</artifactId>
+			<version>1.2.0</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.16.1</version>
 		</dependency>
 
 		<dependency>

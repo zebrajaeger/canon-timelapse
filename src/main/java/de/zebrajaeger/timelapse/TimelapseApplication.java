@@ -1,13 +1,13 @@
-package de.zebrajaeger.canon_timelapse;
+package de.zebrajaeger.timelapse;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class CanonTimelapseApplication {
+public class TimelapseApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CanonTimelapseApplication.class, args);
+		SpringApplication.run(TimelapseApplication.class, args);
 	}
 
 }

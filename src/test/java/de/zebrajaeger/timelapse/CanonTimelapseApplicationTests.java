@@ -1,4 +1,4 @@
-package de.zebrajaeger.canon_timelapse;
+package de.zebrajaeger.timelapse;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
