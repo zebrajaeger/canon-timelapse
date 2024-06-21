@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### EDSDK
+
+/EDSDK/Dll/*.dll
+/EDSDK/Header/*.h
+/EDSDK/Library/ARM32/*.so
+/EDSDK/Library/ARM64/*.so
+/EDSDK_64/Dll/*.dll
+/EDSDK_64/Library/*.lib

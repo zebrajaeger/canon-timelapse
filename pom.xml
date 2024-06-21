@@ -39,6 +39,14 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/org.blackdread/canon-sdk-java -->
+		<dependency>
+			<groupId>org.blackdread</groupId>
+			<artifactId>canon-sdk-java</artifactId>
+			<version>1.2.0</version>
+			<type>pom</type>
+		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
