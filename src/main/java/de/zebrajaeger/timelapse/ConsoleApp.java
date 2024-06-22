@@ -17,8 +17,6 @@ import org.blackdread.cameraframework.util.ReleaseUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -29,24 +27,31 @@ import static org.blackdread.cameraframework.api.helper.factory.CanonFactory.eds
 import static org.blackdread.cameraframework.util.ErrorUtil.toEdsdkError;
 
 @Slf4j
-public class TestApp {
+public class ConsoleApp {
 
     private final EdsdkLibrary.EdsCameraRef.ByReference camera;
     private final EdsdkLibrary.EdsCameraRef cameraRef;
 
     public static void main(String[] args) throws IOException {
-        TestApp testApp = null;
+        Timelapse config = OptionParser.parse(args);
+        if (config == null) {
+            return;
+        }
+
+        System.out.println(config);
+
+        ConsoleApp consoleApp = null;
         try {
-            testApp = new TestApp();
-            testApp.doIt();
+            consoleApp = new ConsoleApp();
+            consoleApp.doShots(config);
         } finally {
-            if (testApp != null) {
-                testApp.shutDown();
+            if (consoleApp != null) {
+                consoleApp.shutDown();
             }
         }
     }
 
-    public TestApp() throws IOException {
+    public ConsoleApp() throws IOException {
         Ole32.INSTANCE.CoInitializeEx(Pointer.NULL, Ole32.COINIT_MULTITHREADED);
         final EdsdkError error = toEdsdkError(edsdkLibrary().EdsInitializeSDK());
         assert (EdsdkError.EDS_ERR_OK == error);
@@ -60,7 +65,7 @@ public class TestApp {
         cameraRef = camera.getValue();
     }
 
-    public EdsdkLibrary.EdsCameraRef.ByReference getFirstCamera() throws IOException {
+    private EdsdkLibrary.EdsCameraRef.ByReference getFirstCamera() throws IOException {
         final EdsdkLibrary.EdsCameraListRef.ByReference cameraListRef = new EdsdkLibrary.EdsCameraListRef.ByReference();
         assertNoError(edsdkLibrary().EdsGetCameraList(cameraListRef));
         try {
@@ -80,32 +85,26 @@ public class TestApp {
         }
     }
 
-
     public void shutDown() {
         try {
-            assertNoError(edsdkLibrary().EdsCloseSession(camera.getValue()));
+            if (camera != null) {
+                assertNoError(edsdkLibrary().EdsCloseSession(camera.getValue()));
+            }
         } finally {
             ReleaseUtil.release(camera);
         }
         assertNoError(toEdsdkError(edsdkLibrary().EdsTerminateSDK()));
     }
 
-    public void doIt() {
+    public void doShots(Timelapse config) {
 
         CanonFactory.cameraObjectEventLogic().registerCameraObjectEvent(cameraRef);
 
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
-        String dirId = df.format(LocalDateTime.now());
-        File tempPath = new File("R:/", dirId);
-        File targetPath = new File("D:/", dirId);
-        long n = 60 * 60 * 12;
-        long periodMs = 1000;
-
-        if (!tempPath.mkdirs()) {
-            throw new IllegalStateException("Could not create directory " + tempPath.getAbsolutePath());
+        if (config.getTempPath() != null && !config.getTempPath().mkdirs()) {
+            throw new IllegalStateException("Could not create directory " + config.getTempPath().getAbsolutePath());
         }
-        if (!targetPath.mkdirs()) {
-            throw new IllegalStateException("Could not create directory " + targetPath.getAbsolutePath());
+        if (config.getTargetPath() != null && !config.getTargetPath().mkdirs()) {
+            throw new IllegalStateException("Could not create directory " + config.getTargetPath().getAbsolutePath());
         }
 
         AtomicBoolean running = new AtomicBoolean(true);
@@ -113,32 +112,35 @@ public class TestApp {
         final LinkedList<ShootOption> toDownload = new LinkedList<>();
 
         Executor executor = Executors.newFixedThreadPool(2);
-        executor.execute(() -> {
-            // Move files loop
-            for (; running.get() || !toMove.isEmpty(); ) {
-                try {
-                    if (toMove.isEmpty()) {
-                        Thread.sleep(10);
-                    } else {
-                        File file = toMove.pollFirst();
-                        if (file != null) {
-                            log.warn("-> Move File {} to {}", file.getAbsolutePath(), targetPath);
-                            FileUtils.moveFileToDirectory(file, targetPath, false);
+        if (config.getTempPath() != null) {
+            executor.execute(() -> {
+                // Move files loop
+                for (; running.get() || !toMove.isEmpty(); ) {
+                    try {
+                        if (toMove.isEmpty()) {
+                            Thread.sleep(10);
+                        } else {
+                            File file = toMove.pollFirst();
+                            if (file != null) {
+                                log.warn("-> Move File {} to {}", file.getAbsolutePath(), config.getTargetPath());
+                                FileUtils.moveFileToDirectory(file, config.getTargetPath(), false);
+                            }
                         }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 }
-            }
-        });
+            });
+        }
 
         executor.execute(() -> {
             try {
                 // Shot loop
                 long shotAt = (System.currentTimeMillis() / 1000 + 1) * 1000;
-                for (int i = 0; i < n; ++i) {
+                long n = config.getNumberOfPictures();
+                for (long i = 0; i < n; ++i) {
                     long t = shotAt - System.currentTimeMillis();
                     if (t < 0) {
                         log.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -151,7 +153,9 @@ public class TestApp {
                         long w = Math.max(1, (shotAt - System.currentTimeMillis()) / 2);
                         Thread.sleep(w);
                     }
-                    shotAt += periodMs;
+                    shotAt += config.getPeriodTimeMs();
+
+                    File p = config.getTempPath() != null ? config.getTempPath() : config.getTargetPath();
                     ShootOption so = new ShootOptionBuilder()
                             .setShootWithAF(false)
                             .setShootWithV0(false)
@@ -160,8 +164,8 @@ public class TestApp {
                             .setFetchEvents(false)
 
                             .setBusyWaitMillis(1)
-                            .setFolderDestination(tempPath)
-                            .setFilename(String.format("%06d", i))
+                            .setFolderDestination(p)
+                            .setFilename(config.getFilenameGenerator().apply(i))
                             .build();
                     toDownload.add(so);
                     long s1 = System.currentTimeMillis();
@@ -178,6 +182,7 @@ public class TestApp {
         });
 
         CanonFactory.cameraObjectEventLogic().registerCameraObjectEvent(cameraRef);
+
         final CameraObjectListener cameraObjectListener = event -> {
             if (event.getObjectEvent() == EdsObjectEvent.kEdsObjectEvent_DirItemCreated
                     || event.getObjectEvent() == EdsObjectEvent.kEdsObjectEvent_DirItemRequestTransfer) {
